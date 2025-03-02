@@ -42,7 +42,7 @@
 <body>
 
 <h1>Tic-Tac-Toe</h1>
-<p>By @ErAleexx</p>
+<p>By ChatGPT</p>
 
 <div class="board" id="board"></div>
 <div class="controls">
@@ -60,6 +60,7 @@
     let player = "X";
     let ai = "O";
     let difficulty = "easy";  
+    let isPlayerTurn = true;
 
     function createBoard() {
         boardElement.innerHTML = "";
@@ -70,18 +71,20 @@
             div.addEventListener("click", playerMove);
             if (cell) {
                 div.textContent = cell;
-                div.classList.add(cell.toLowerCase()); // Aplica color de X o O
+                div.classList.add(cell.toLowerCase());
             }
             boardElement.appendChild(div);
         });
     }
 
     function playerMove(e) {
+        if (!isPlayerTurn) return;
         let index = e.target.dataset.index;
         if (!board[index]) {
             board[index] = player;
             e.target.textContent = player;
             e.target.classList.add("placed", player.toLowerCase(), "occupied");
+            isPlayerTurn = false;
 
             if (checkWinner(player)) {
                 endGame(player);
@@ -96,18 +99,13 @@
         let empty = board.map((v, i) => (v === "" ? i : null)).filter(v => v !== null);
         if (empty.length === 0) return;
 
-        let move;
-        if (difficulty === "hard") {
-            move = minimax(board, ai).index;
-        } else {
-            move = empty[Math.floor(Math.random() * empty.length)];
-        }
-
+        let move = (difficulty === "hard") ? minimax(board, ai).index : empty[Math.floor(Math.random() * empty.length)];
+        
         board[move] = ai;
-
         let cell = document.querySelector(`[data-index='${move}']`);
         cell.textContent = ai;
         cell.classList.add("placed", ai.toLowerCase(), "occupied");
+        isPlayerTurn = true;
 
         if (checkWinner(ai)) {
             endGame(ai);
@@ -115,6 +113,10 @@
     }
 
     function checkWinner(player) {
+        return checkWinnerOnBoard(board, player);
+    }
+
+    function checkWinnerOnBoard(board, player) {
         const wins = [
             [0, 1, 2], [3, 4, 5], [6, 7, 8], 
             [0, 3, 6], [1, 4, 7], [2, 5, 8], 
@@ -123,50 +125,38 @@
         return wins.some(pattern => pattern.every(index => board[index] === player));
     }
 
+    function minimax(newBoard, currentPlayer) {
+        let empty = newBoard.map((v, i) => (v === "" ? i : null)).filter(v => v !== null);
+        if (checkWinnerOnBoard(newBoard, player)) return { score: -10 };
+        if (checkWinnerOnBoard(newBoard, ai)) return { score: 10 };
+        if (empty.length === 0) return { score: 0 };
+
+        let moves = empty.map(index => {
+            newBoard[index] = currentPlayer;
+            let score = minimax(newBoard, currentPlayer === ai ? player : ai).score;
+            newBoard[index] = "";
+            return { index, score };
+        });
+
+        return moves.reduce((best, move) => (currentPlayer === ai ? move.score > best.score : move.score < best.score) ? move : best);
+    }
+
     function endGame(winner) {
         winnerMessage.textContent = winner === "X" ? "¡Ganaste! 🎉" : "Perdiste 😢";
+        isPlayerTurn = false;
         document.querySelectorAll(".cell").forEach(cell => cell.classList.add("occupied"));
     }
 
     function resetGame() {
         board = ["", "", "", "", "", "", "", "", ""];
         winnerMessage.textContent = "";
+        isPlayerTurn = true;
         createBoard();
     }
 
     function toggleDifficulty() {
         difficulty = difficulty === "easy" ? "hard" : "easy";
         difficultySpan.textContent = difficulty === "easy" ? "Fácil" : "Difícil";
-    }
-
-    function minimax(newBoard, currentPlayer) {
-        let empty = newBoard.map((v, i) => (v === "" ? i : null)).filter(v => v !== null);
-        if (checkWinner(player)) return { score: -10 };
-        if (checkWinner(ai)) return { score: 10 };
-        if (empty.length === 0) return { score: 0 };
-
-        let moves = [];
-        empty.forEach(index => {
-            let move = { index };
-            newBoard[index] = currentPlayer;
-
-            if (currentPlayer === ai) {
-                move.score = minimax(newBoard, player).score;
-            } else {
-                move.score = minimax(newBoard, ai).score;
-            }
-
-            newBoard[index] = "";
-            moves.push(move);
-        });
-
-        return moves.reduce((bestMove, move) => {
-            if ((currentPlayer === ai && move.score > bestMove.score) ||
-                (currentPlayer === player && move.score < bestMove.score)) {
-                return move;
-            }
-            return bestMove;
-        }, { score: currentPlayer === ai ? -Infinity : Infinity });
     }
 
     createBoard();
